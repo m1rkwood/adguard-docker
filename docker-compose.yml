@@ -1,0 +1,42 @@
+version: "3.7"
+
+services:
+  adguard:
+    container_name: adguard
+    restart: unless-stopped
+    image: adguard/adguardhome:latest
+    environment:
+      TZ: ${TZ}
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+    volumes:
+      - adguard-workdir:/opt/adguardhome/work
+      - adguard-confdir:/opt/adguardhome/conf
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+    labels:
+      - "traefik.enable=true"
+      #
+      # load interface on https
+      - "traefik.http.routers.adguard-https.rule=Host(`${VIRTUAL_HOST}`)"
+      - "traefik.http.routers.adguard-https.entrypoints=websecure"
+      - "traefik.http.routers.adguard-https.tls=true"
+      - "traefik.http.routers.adguard-https.tls.certresolver=letsencrypt"
+      - "traefik.http.services.adguard.loadbalancer.server.port=80"
+      #
+      # load tcp/udp confs
+      - "traefik.tcp.routers.adguard-dns.entrypoints=dns"
+      - "traefik.tcp.routers.adguard-dns.service=adguard"
+      - "traefik.udp.routers.adguard-udp.entrypoints=udpdns"
+      - "traefik.udp.routers.adguard-udp.service=adguard"
+      - "traefik.udp.services.adguard.loadbalancer.server.port=53"
+    networks:
+      - web
+
+volumes:
+  adguard-workdir:
+  adguard-confdir:
+
+networks:
+  web:
+    external: true
